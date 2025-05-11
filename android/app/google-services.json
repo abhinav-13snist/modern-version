@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "120022914591",
+    "project_id": "snav-d0422",
+    "storage_bucket": "snav-d0422.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:120022914591:android:c642037e3e19f6b562a72a",
+        "android_client_info": {
+          "package_name": "com.example.snav"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC86vdFUQXrjf5ZeEBCIkq8Xc8lRLUfoV0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:120022914591:android:9a60be5d263962fc62a72a",
+        "android_client_info": {
+          "package_name": "com.example.untitled25"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC86vdFUQXrjf5ZeEBCIkq8Xc8lRLUfoV0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
