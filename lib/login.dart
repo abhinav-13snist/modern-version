@@ -23,11 +23,11 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      final UserCredential userCredential =
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
 
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/home');
@@ -64,7 +64,9 @@ class _LoginPageState extends State<LoginPage> {
         children: [
           const SizedBox.expand(
             child: Image(
-              image: AssetImage('images/assets/Screenshot 2025-04-20 123239.png'),
+              image: AssetImage(
+                'images/assets/Screenshot 2025-04-20 123239.png',
+              ),
               fit: BoxFit.cover,
             ),
           ),
@@ -143,10 +145,11 @@ class _LoginPageState extends State<LoginPage> {
             hintStyle: const TextStyle(color: Colors.white54),
             filled: true,
             fillColor: Colors.white.withOpacity(0.18),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
             ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
           ),
         ),
       ],
@@ -175,10 +178,11 @@ class _LoginPageState extends State<LoginPage> {
             hintStyle: const TextStyle(color: Colors.white54),
             filled: true,
             fillColor: Colors.white.withOpacity(0.18),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
             ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
           ),
         ),
       ],
@@ -207,32 +211,35 @@ class _LoginPageState extends State<LoginPage> {
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF2a5298),
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18)),
+            borderRadius: BorderRadius.circular(18),
+          ),
           elevation: 9,
         ),
         onPressed: _isLoading ? null : _login,
-        child: _isLoading
-            ? const CircularProgressIndicator(color: Colors.white)
-            : const Text(
-          'Login',
-          style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white),
-        ),
+        child:
+            _isLoading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text(
+                  'Login',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
       ),
     );
   }
 
   Widget _buildRegisterButton() {
     return TextButton(
-      onPressed: widget.onRegister,
+      onPressed: () {
+        widget.onRegister(); // Trigger callback for debugging
+        Navigator.pushNamed(context, '/register'); // Handle navigation here
+      },
       child: const Text(
         'Don\'t have an account? Register',
-        style: TextStyle(
-          color: Colors.white70,
-          fontSize: 16,
-        ),
+        style: TextStyle(color: Colors.white70, fontSize: 16),
       ),
     );
   }

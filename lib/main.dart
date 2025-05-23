@@ -1,6 +1,5 @@
-// main.dart
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'login.dart';
@@ -20,7 +19,7 @@ class SreenidhiApp extends StatefulWidget {
 }
 
 class _SreenidhiAppState extends State<SreenidhiApp> {
-  bool isDarkMode = false;
+  bool isDarkMode = true; // Default to dark mode
   User? user;
 
   @override
@@ -63,34 +62,11 @@ class _SreenidhiAppState extends State<SreenidhiApp> {
                   secondary: Color(0xFF1e3c72),
                 ),
               ),
-      home:
-          user == null
-              ? LoginPage(
-                onRegister: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (_) => RegisterScreen(
-                            onLogin: () {
-                              Navigator.pop(context);
-                            },
-                          ),
-                    ),
-                  );
-                },
-              )
-              : HomePage(
-                userName: user!.email ?? 'User',
-                onLogout: _onLogout,
-                isDarkMode: isDarkMode,
-                onToggleDarkMode: _toggleDarkMode,
-              ),
       routes: {
         '/register':
             (context) => RegisterScreen(
               onLogin: () {
-                Navigator.pushNamed(context, '/login');
+                Navigator.pop(context);
               },
             ),
         '/login':
@@ -99,7 +75,30 @@ class _SreenidhiAppState extends State<SreenidhiApp> {
                 Navigator.pushNamed(context, '/register');
               },
             ),
+        '/home':
+            (context) => HomePage(
+              userName: user?.email ?? 'User',
+              onLogout: _onLogout,
+              isDarkMode: isDarkMode,
+              onToggleDarkMode: _toggleDarkMode,
+            ),
       },
+      home: Builder(
+        builder: (BuildContext context) {
+          return user == null
+              ? LoginPage(
+                onRegister: () {
+                  Navigator.pushNamed(context, '/register');
+                },
+              )
+              : HomePage(
+                userName: user!.email ?? 'User',
+                onLogout: _onLogout,
+                isDarkMode: isDarkMode,
+                onToggleDarkMode: _toggleDarkMode,
+              );
+        },
+      ),
     );
   }
 }
@@ -108,15 +107,15 @@ class HomePage extends StatefulWidget {
   final String userName;
   final VoidCallback onLogout;
   final bool isDarkMode;
-  final void Function(bool) onToggleDarkMode;
+  final ValueChanged<bool> onToggleDarkMode;
 
   const HomePage({
-    super.key,
+    Key? key,
     required this.userName,
     required this.onLogout,
     required this.isDarkMode,
     required this.onToggleDarkMode,
-  });
+  }) : super(key: key);
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -124,13 +123,12 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final Set<String> favouriteClubs = {};
   final TextEditingController _searchController = TextEditingController();
+  final Set<String> favoriteClubs = {};
 
   final Map<String, String> roomData = {
     '1101': 'Ladies Toilet, ECE Block Ground Floor',
     '1102': 'Electro.M.lab, ECE Block Ground Floor',
-    '1103': 'Lecture Hall, ECE Block Ground Floor',
     '10102':
         'Web Technologies Lab & Object-Oriented Programming through Java Lab, Opposite Basketball Ground',
     '9101':
@@ -425,27 +423,63 @@ class _HomePageState extends State<HomePage> {
     MapEntry('Bio-Tech', 'Biotechnology Engineering'),
   ];
 
+  String? expandedMenu;
+  List<String> searchResults = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.isDarkMode) {
+      widget.onToggleDarkMode(true);
+    }
+  }
+
   void _toggleMenu(String menu) {
     setState(() {
       expandedMenu = expandedMenu == menu ? null : menu;
     });
   }
 
-  String? expandedMenu;
+  void _searchRooms(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        searchResults = [];
+        return;
+      }
+      searchResults =
+          roomData.entries
+              .where((entry) => entry.key.startsWith(query))
+              .map((entry) => "${entry.key} - ${entry.value}")
+              .toList();
+    });
+  }
 
-  Widget _buildClubsMenu() {
-    return _buildExpandableMenu(
-      'Clubs',
-      clubs,
-      specialHandling: (MapEntry<String, String> e) => e.key == 'Robotics Club',
-    );
+  Future<bool> _onWillPop() async {
+    return (await showDialog(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: const Text('Confirm Exit'),
+                content: const Text('Are you sure you want to exit the app?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('No'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('Yes'),
+                  ),
+                ],
+              ),
+        )) ??
+        false;
   }
 
   Widget _buildExpandableMenu(
     String title,
-    List<MapEntry<String, String>> items, {
-    bool Function(MapEntry<String, String>)? specialHandling,
-  }) {
+    List<MapEntry<String, String>> items,
+  ) {
     final isExpanded = expandedMenu == title;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,63 +494,51 @@ class _HomePageState extends State<HomePage> {
         ),
         if (isExpanded)
           Padding(
-            padding: const EdgeInsets.only(left: 16, bottom: 8),
+            padding: const EdgeInsets.only(left: 16.0),
             child: Column(
               children:
-                  items.map((e) {
-                    if (specialHandling?.call(e) ?? false) {
-                      return ListTile(
-                        title: Text(e.key),
-                        subtitle: Text(e.value),
-                        dense: true,
-                        trailing: IconButton(
-                          icon: Icon(
-                            favouriteClubs.contains(e.key)
-                                ? Icons.star
-                                : Icons.star_border,
-                            color:
-                                favouriteClubs.contains(e.key)
-                                    ? Colors.amber
-                                    : Colors.grey,
-                          ),
-                          onPressed:
-                              () => setState(() {
-                                favouriteClubs.contains(e.key)
-                                    ? favouriteClubs.remove(e.key)
-                                    : favouriteClubs.add(e.key);
-                              }),
-                        ),
-                        onTap:
-                            () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const RoboticsClubGalleryPage(),
-                              ),
-                            ),
-                      );
-                    }
+                  items.map((item) {
                     return ListTile(
-                      title: Text(e.key),
-                      subtitle: Text(e.value),
-                      dense: true,
+                      title: Text(item.key),
+                      subtitle: Text(item.value),
                       trailing:
                           title == 'Clubs'
                               ? IconButton(
                                 icon: Icon(
-                                  favouriteClubs.contains(e.key)
+                                  favoriteClubs.contains(item.key)
                                       ? Icons.star
                                       : Icons.star_border,
                                   color:
-                                      favouriteClubs.contains(e.key)
+                                      favoriteClubs.contains(item.key)
                                           ? Colors.amber
-                                          : Colors.grey,
+                                          : null,
                                 ),
-                                onPressed:
-                                    () => setState(() {
-                                      favouriteClubs.contains(e.key)
-                                          ? favouriteClubs.remove(e.key)
-                                          : favouriteClubs.add(e.key);
-                                    }),
+                                onPressed: () {
+                                  setState(() {
+                                    if (favoriteClubs.contains(item.key)) {
+                                      favoriteClubs.remove(item.key);
+                                    } else {
+                                      favoriteClubs.add(item.key);
+                                    }
+                                  });
+                                },
+                              )
+                              : null,
+                      onTap:
+                          title == 'Clubs' && item.key == 'Robotics Club'
+                              ? () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (_) => const RoboticsClubGalleryPage(),
+                                ),
+                              )
+                              : title == 'Events' && item.key == 'Sreevision'
+                              ? () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SreevisionGalleryPage(),
+                                ),
                               )
                               : null,
                     );
@@ -529,112 +551,264 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
+    print('Building HomePage with isDarkMode: ${widget.isDarkMode}');
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        key: _scaffoldKey,
+        drawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Sreenidhi Navigation',
+                      style: TextStyle(color: Colors.white, fontSize: 24),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Welcome, ${widget.userName}',
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ],
+                ),
               ),
-              child: Text(
-                'Welcome, ${widget.userName}',
-                style: const TextStyle(color: Colors.white, fontSize: 24),
+              ListTile(
+                leading: const Icon(Icons.notifications),
+                title: const Text('Notifications'),
+                onTap: () {
+                  // Handle notifications
+                },
               ),
-            ),
-            _buildClubsMenu(),
-            _buildExpandableMenu('Organizations', organizations),
-            _buildExpandableMenu('Departments', departments),
-            _buildExpandableMenu(
-              'Events',
-              events,
-              specialHandling: (e) => e.key == 'Sreevision',
-            ),
-            const Divider(),
-            ListTile(
-              title: const Text('Dark Mode'),
-              trailing: Switch(
-                value: widget.isDarkMode,
-                onChanged: widget.onToggleDarkMode,
+              _buildExpandableMenu('Departments', departments),
+              _buildExpandableMenu('Events', events),
+              _buildExpandableMenu('Organizations', organizations),
+              _buildExpandableMenu('Clubs', clubs),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.logout),
+                title: const Text('Logout'),
+                onTap: widget.onLogout,
               ),
-            ),
-            ListTile(
-              title: const Text('Logout'),
-              leading: const Icon(Icons.logout),
-              onTap: widget.onLogout,
+            ],
+          ),
+        ),
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+          ),
+          title: const Text('Sreenidhi Navigation'),
+          actions: [
+            Switch(
+              value: widget.isDarkMode,
+              onChanged: widget.onToggleDarkMode,
+              activeColor: Colors.amber,
             ),
           ],
         ),
-      ),
-      appBar: AppBar(
-        title: const Text('Sreenidhi Navigation'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed:
-                () => showSearch(
-                  context: context,
-                  delegate: RoomSearchDelegate(roomData),
+        body: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Robotics Club',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 200,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: const [
+                          _GalleryImage(
+                            'images/assets/WhatsApp Image 2025-05-04 at 23.23.14_6dc02be8.jpg',
+                          ),
+                          _GalleryImage(
+                            'images/assets/WhatsApp Image 2025-05-04 at 23.23.14_9788e0c7.jpg',
+                          ),
+                          _GalleryImage(
+                            'images/assets/WhatsApp Image 2025-05-04 at 23.23.14_ed782e36.jpg',
+                          ),
+                          _GalleryImage(
+                            'images/assets/WhatsApp Image 2025-05-04 at 23.23.15_cad3fa3d.jpg',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Sreevision',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 200,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: const [
+                          _GalleryImage(
+                            'images/assets/WhatsApp Image 2025-05-04 at 22.28.38_1329c385.jpg',
+                          ),
+                          _GalleryImage(
+                            'images/assets/WhatsApp Image 2025-05-04 at 22.28.39_42666499.jpg',
+                          ),
+                          _GalleryImage(
+                            'images/assets/WhatsApp Image 2025-05-04 at 22.28.39_dbdb6aca.jpg',
+                          ),
+                          _GalleryImage(
+                            'images/assets/WhatsApp Image 2025-05-04 at 22.28.39_ea540aef.jpg',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Clubs',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: clubs.length,
+                      itemBuilder: (context, index) {
+                        final club = clubs[index];
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          child: ListTile(
+                            title: Text(club.key),
+                            subtitle: Text(club.value),
+                            trailing: IconButton(
+                              icon: Icon(
+                                favoriteClubs.contains(club.key)
+                                    ? Icons.star
+                                    : Icons.star_border,
+                                color:
+                                    favoriteClubs.contains(club.key)
+                                        ? Colors.amber
+                                        : null,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  if (favoriteClubs.contains(club.key)) {
+                                    favoriteClubs.remove(club.key);
+                                  } else {
+                                    favoriteClubs.add(club.key);
+                                  }
+                                });
+                              },
+                            ),
+                            onTap:
+                                club.key == 'Robotics Club'
+                                    ? () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (_) =>
+                                                const RoboticsClubGalleryPage(),
+                                      ),
+                                    )
+                                    : null,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: _searchRooms,
+                  decoration: InputDecoration(
+                    labelText: 'Search Rooms (e.g., 8101)',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor:
+                        widget.isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                  ),
+                ),
+              ),
+              if (searchResults.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: searchResults.length,
+                    itemBuilder: (context, index) {
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(title: Text(searchResults[index])),
+                      );
+                    },
+                  ),
+                ),
+            ],
           ),
-        ],
-      ),
-      body: ListView.builder(
-        itemCount: roomData.length,
-        itemBuilder: (context, index) {
-          final entry = roomData.entries.elementAt(index);
-          return ListTile(
-            title: Text('Room ${entry.key}'),
-            subtitle: Text(entry.value),
-          );
-        },
+        ),
       ),
     );
   }
 }
 
-class RoomSearchDelegate extends SearchDelegate {
-  final Map<String, String> roomData;
+class _GalleryImage extends StatelessWidget {
+  final String imagePath;
 
-  RoomSearchDelegate(this.roomData);
-
-  @override
-  List<Widget> buildActions(BuildContext context) => [
-    IconButton(icon: const Icon(Icons.clear), onPressed: () => query = ''),
-  ];
+  const _GalleryImage(this.imagePath);
 
   @override
-  Widget buildLeading(BuildContext context) => IconButton(
-    icon: const Icon(Icons.arrow_back),
-    onPressed: () => close(context, null),
-  );
-
-  @override
-  Widget buildResults(BuildContext context) => _buildSearchResults();
-
-  @override
-  Widget buildSuggestions(BuildContext context) => _buildSearchResults();
-
-  Widget _buildSearchResults() {
-    final results =
-        query.isEmpty
-            ? roomData.entries.toList()
-            : roomData.entries
-                .where((e) => e.key.toLowerCase().contains(query.toLowerCase()))
-                .toList();
-
-    return ListView.builder(
-      itemCount: results.length,
-      itemBuilder: (context, index) {
-        final entry = results[index];
-        return ListTile(
-          title: Text(entry.key),
-          subtitle: Text(entry.value),
-          onTap: () => close(context, entry),
-        );
-      },
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.asset(
+          imagePath,
+          width: 150,
+          height: 200,
+          fit: BoxFit.cover,
+        ),
+      ),
     );
   }
 }
@@ -655,13 +829,14 @@ class RoboticsClubGalleryPage extends StatelessWidget {
       appBar: AppBar(title: const Text('Robotics Club Gallery')),
       body: GridView.count(
         crossAxisCount: 2,
+        padding: const EdgeInsets.all(8),
         children:
             imagePaths
-                .asMap()
-                .entries
                 .map(
-                  (entry) =>
-                      Image(image: AssetImage(entry.value), fit: BoxFit.cover),
+                  (path) => ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(path, fit: BoxFit.cover),
+                  ),
                 )
                 .toList(),
       ),
@@ -685,13 +860,14 @@ class SreevisionGalleryPage extends StatelessWidget {
       appBar: AppBar(title: const Text('Sreevision Gallery')),
       body: GridView.count(
         crossAxisCount: 2,
+        padding: const EdgeInsets.all(8),
         children:
             imagePaths
-                .asMap()
-                .entries
                 .map(
-                  (entry) =>
-                      Image(image: AssetImage(entry.value), fit: BoxFit.cover),
+                  (path) => ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(path, fit: BoxFit.cover),
+                  ),
                 )
                 .toList(),
       ),
